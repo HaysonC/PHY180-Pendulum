@@ -7,45 +7,39 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from numpy import ndarray
 
+
 # Initialize video capture
-file = 'videos/test9.mp4'
+file = 'videos/test12.mp4'
 print("file exists?", os.path.exists(file))
 cap = cv2.VideoCapture(file)
 
+# The first frame have the user to draw a line and specify the distance and the centre of the pendulum, resize before operation
+ret, frame = cap.read()
+aspect = frame.shape[1] / frame.shape[0]
+frame = cv2.resize(frame, (800, int(800 / aspect)))
+""" 
+# Draw a line
+line = None
+def draw_line(event, x, y, flags, param):
+    nonlocal line
+    if event == cv2.EVENT_LBUTTONDOWN:
+        if line is None:
+            line = [(x, y)]
+        else:
+            line.append((x, y))
+            cv2.line(frame, line[0], line[1], (0, 255, 0), 2)
+            cv2.imshow('Pendulum Tracking', frame)
+
+"""
 
 # color detection for the bob
 color = "ff0000"
-threshold = 0.70
+threshold = 0.6
 color = np.array([int(color[i:i + 2], 16) for i in (0, 2, 4)])
 
 color = tuple(color - 128 for color in color[::-1])
-# circle detection not working
 
-""" 
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
-
-    # Preprocessing
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-
-    # Circle detection
-    circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1, minDist=20,
-                               param1=50, param2=30, minRadius=5, maxRe
-            cv2.circle(frame, (i[0], i[1]), i[2], (0, 255, 0), 2)
-
-    # Show the frame
-    cv2.imshow('Pendulum Tracking', frame)
-
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
-
-"""
+norm_color = np.linalg.norm(color)
 # color detection, also use green to circle the part where it detects
 # dataframe
 df = pd.DataFrame(columns=['time', 'x', 'y', 'theta'])
@@ -56,26 +50,14 @@ while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
-    # resise with the same aspect ratio
-    aspect = frame.shape[1] / frame.shape[0]
     frame = cv2.resize(frame, (800, int(800 / aspect)))
-    # preprocess
-    lab = cv2.cvtColor(frame, cv2.COLOR_RGB2LAB)
-    # for each element in the lab, if the sum of the three elements is greater than 255*2.8, set it to 0
-    lab[lab.sum(axis=2) > 255 * 2.8] = 0
-    # centre the color
-    lab = lab - [128, 128, 128]
-    # if the sum of the three elements more then 118*3 set it to 0
-    lab[lab.sum(axis=2) > 100 * 3] = 0
+    s = frame - np.array([128, 128, 128])
 
-    # calculate the dot product
-    try:
-        dot = -(np.dot(lab, color) / np.linalg.norm(color) / np.linalg.norm(lab, axis=2))
-    except ValueError:
-        continue
+    norm_s = np.linalg.norm(s, axis=2)
+    dot = np.sum(s * color, axis=2) / (norm_s * norm_color)
 
     # imshow dot product
-    cv2.imshow('Pendulum Tracking', dot)
+
 
 
     # costheta > threshold
@@ -115,7 +97,6 @@ while cap.isOpened():
         avg_center_x = weighted_sum_x / total_area
         avg_center_y = weighted_sum_y / total_area
         cv2.circle(frame, (int(avg_center_x), int(avg_center_y)), 5, (255, 0, 0), -1)
-        print(f"Weighted Average Center: ({avg_center_x}, {avg_center_y})")
     try:
         if avg_center_x is not None and avg_center_y is not None:
             # record x and y on a dataframe
@@ -123,7 +104,7 @@ while cap.isOpened():
     except NameError:
         pass
     # 1/1000 chance to quit
-    if random() < 0.001:
+    if random() < 0.0001:
         break
     # Show the frame
     cv2.imshow('Pendulum Tracking', frame)
@@ -131,6 +112,10 @@ while cap.isOpened():
         break
 # delte time = 0 row
 df = df[df.time != 0]
+
+# save the df as a csv file
+df.to_csv('pendulum.csv', index=False)
+
 # plot  the dataframe, time and x,scatter plot, smaller dots
 plt.scatter(df.time, df.x, label='x', s=1)
 plt.savefig('x.pdf')
