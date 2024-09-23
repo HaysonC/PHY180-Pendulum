@@ -9,10 +9,10 @@ from numpy import ndarray
 
 
 # Initialize video capture
-file = 'videos/test13.mp4'
+file = 'videos/run1.mp4'
 print("file exists?", os.path.exists(file))
 cap = cv2.VideoCapture(file)
-fps = 120
+fps = 240
 # The first frame have the user to draw a line and specify the distance and the centre of the pendulum, resize before operation
 ret, frame = cap.read()
 aspect = frame.shape[1] / frame.shape[0]
@@ -103,9 +103,6 @@ while cap.isOpened():
             df = df._append({'time': time/fps, 'x': avg_center_x, 'y': avg_center_y, 'theta': 0}, ignore_index=True)
     except NameError:
         pass
-    # 1/1000 chance to quit
-    if random() < 0.0001:
-        break
     # Show the frame
     cv2.imshow('Pendulum Tracking', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
