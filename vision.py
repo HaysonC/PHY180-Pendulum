@@ -9,10 +9,10 @@ from numpy import ndarray
 
 
 # Initialize video capture
-file = 'videos/test12.mp4'
+file = 'videos/test13.mp4'
 print("file exists?", os.path.exists(file))
 cap = cv2.VideoCapture(file)
-
+fps = 120
 # The first frame have the user to draw a line and specify the distance and the centre of the pendulum, resize before operation
 ret, frame = cap.read()
 aspect = frame.shape[1] / frame.shape[0]
@@ -100,7 +100,7 @@ while cap.isOpened():
     try:
         if avg_center_x is not None and avg_center_y is not None:
             # record x and y on a dataframe
-            df = df._append({'time': time, 'x': avg_center_x, 'y': avg_center_y, 'theta': 0}, ignore_index=True)
+            df = df._append({'time': time/fps, 'x': avg_center_x, 'y': avg_center_y, 'theta': 0}, ignore_index=True)
     except NameError:
         pass
     # 1/1000 chance to quit
@@ -115,14 +115,13 @@ df = df[df.time != 0]
 
 # save the df as a csv file
 df.to_csv('pendulum.csv', index=False)
-
+# save t
 # plot  the dataframe, time and x,scatter plot, smaller dots
-plt.scatter(df.time, df.x, label='x', s=1)
-plt.savefig('x.pdf')
+plt.scatter(df.time, df.y, label='y', s=1)
+plt.savefig('y.pdf')
 plt.show()
 
 
 cap.release()
 
 cv2.destroyAllWindows()
-
