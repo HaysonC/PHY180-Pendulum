@@ -35,9 +35,10 @@ theta_smooth = savgol_filter(df['theta'], window_length=51, polyorder=3)
 
 # Find peaks in the smoothed data
 peaks, _ = find_peaks(theta_smooth)
+antipeaks, _ = find_peaks(-theta_smooth)
 
-# Time between consecutive peaks gives you the period (half period)
 peak_times = df['time'][peaks]
+antipeak_times = df['time'][antipeaks]
 
 # Calculate the period
 periods = list(np.diff(peak_times))
@@ -45,16 +46,27 @@ period = np.mean(periods)
 # delete abnormal period, tolerance is 50% of the average period, less or more than that is considered abnormal
 periods = [p for p in periods if abs(p - period) < period * 0.5]
 
+anti_periods = list(np.diff(antipeak_times))
+anti_period = np.mean(anti_periods)
+anti_periods = [p for p in anti_periods if abs(p - anti_period) < anti_period * 0.5]
+
 # get the average period
 
 print("Period:", period)
 # add a period column to the dataframe
 df['period'] = np.zeros(len(df))
+df['anti period'] = np.zeros(len(df))
 # assign period number to each section of the data
 for i, t in enumerate(peak_times[1:]):
     # find the index of the data that is less than the current peak time
     index = df[df['time'] < t].index[-1]
     # assign the period number to the data
     df.loc[index:, 'period'] =  i + 1
+
+for i, t in enumerate(antipeak_times[1:]):
+    # find the index of the data that is less than the current peak time
+    index = df[df['time'] < t].index[-1]
+    # assign the period number to the data
+    df.loc[index:, 'anti period'] =  i + 1
 
 
