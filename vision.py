@@ -9,7 +9,7 @@ from numpy import ndarray
 
 
 # Initialize video capture
-file = 'videos/test13.mp4'
+file = "videos/Pendulum 3.mp4"
 print("file exists?", os.path.exists(file))
 cap = cv2.VideoCapture(file)
 fps = 120
@@ -34,16 +34,16 @@ def draw_line(event, x, y, flags, param):
 
 # color detection for the bob
 color = "ff0000"
-threshold = 0.6
-color = np.array([int(color[i:i + 2], 16) for i in (0, 2, 4)])
+threshold = 0.9
+color = np.array([int(color[i : i + 2], 16) for i in (0, 2, 4)])
 
 color = tuple(color - 128 for color in color[::-1])
 
 norm_color = np.linalg.norm(color)
 # color detection, also use green to circle the part where it detects
 # dataframe
-df = pd.DataFrame(columns=['time', 'x', 'y', 'theta'])
-time=0
+df = pd.DataFrame(columns=["time", "x", "y", "theta"])
+time = 0
 
 while cap.isOpened():
     time += 1
@@ -57,8 +57,6 @@ while cap.isOpened():
     dot = np.sum(s * color, axis=2) / (norm_s * norm_color)
 
     # imshow dot product
-
-
 
     # costheta > threshold
     mask = np.zeros_like(dot, dtype=np.uint8)
@@ -87,11 +85,21 @@ while cap.isOpened():
         weighted_sum_y += center_y * area
 
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        cv2.putText(frame, f"{x},{y}", (x + w, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        cv2.putText(frame, f"{w * h}", (x + w, y - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        cv2.putText(
+            frame, f"{x},{y}", (x + w, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2
+        )
+        cv2.putText(
+            frame,
+            f"{w * h}",
+            (x + w, y - 20),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 255, 0),
+            2,
+        )
 
         theta = np.arctan2(y - frame.shape[0] // 2, x - frame.shape[1] // 2)
-        df = df._append({'time': 0, 'x': x, 'y': y, 'theta': theta}, ignore_index=True)
+        df = df._append({"time": 0, "x": x, "y": y, "theta": theta}, ignore_index=True)
 
     if total_area > 0:
         avg_center_x = weighted_sum_x / total_area
@@ -100,25 +108,25 @@ while cap.isOpened():
     try:
         if avg_center_x is not None and avg_center_y is not None:
             # record x and y on a dataframe
-            df = df._append({'time': time/fps, 'x': avg_center_x, 'y': avg_center_y, 'theta': 0}, ignore_index=True)
+            df = df._append(
+                {"time": time / fps, "x": avg_center_x, "y": avg_center_y, "theta": 0},
+                ignore_index=True,
+            )
     except NameError:
         pass
-    # 1/1000 chance to quit
-    if random() < 0.0001:
-        break
     # Show the frame
-    cv2.imshow('Pendulum Tracking', frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    cv2.imshow("Pendulum Tracking", frame)
+    if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 # delte time = 0 row
 df = df[df.time != 0]
 
 # save the df as a csv file
-df.to_csv('pendulum.csv', index=False)
+df.to_csv("pendulum.csv", index=False)
 # save t
-# plot  the dataframe, time and x,scatter plot, smaller dots
-plt.scatter(df.time, df.y, label='y', s=1)
-plt.savefig('y.pdf')
+# plot the dataframe, time and x,scatter plot, smaller dots
+plt.scatter(df.time, df.y, label="y", s=1)
+plt.savefig("y.pdf")
 plt.show()
 
 

@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
 # Read the data from the CSV file
-df = pd.read_csv("pendulum.csv")
+df = pd.read_csv("pendulum1.csv")
 
 # Print the first few rows of the data
 print(df[:5])
-
 
 
 """ 
@@ -54,18 +54,23 @@ df["derivative"] = np.zeros(len(df))
 
 origin = (min(df["y"]) if start_from == "left" else max(df["y"]), df["x"].mean())
 
-df['theta'] = np.arctan((df['x'] - origin[1])/(df['y'] - origin[0])) * 180 / np.pi
+df["theta"] = np.where(
+    df["y"] > origin[0],
+    np.arctan((df["x"] - origin[1]) / (df["y"] - origin[0])) * 180 / np.pi,
+    -np.arctan((df["x"] - origin[1]) / (df["y"] - origin[0])) * 180 / np.pi,
+)
 
-lenghtSting = 0.025 # 0.025 m is 250mm
-
+lenghtSting = 0.025  # 0.025 m is 250mm
 
 
 # we need to obtain the period of the pendulum, and label sections of the pendulum and we would asisng a period number to each section
 # use noise filtering to compute the deritivie of the angle, and then use the zero crossing to compute the period
 last_derivative = 0
-alpha = .5
+alpha = 0.5
 for i in range(1, len(df)):
-    df["derivative"][i] = alpha * (df["y"][i] - df["y"][i - 1]) + (1 - alpha) * last_derivative
+    df["derivative"][i] = (
+        alpha * (df["y"][i] - df["y"][i - 1]) + (1 - alpha) * last_derivative
+    )
     last_derivative = df["derivative"][i]
 zeroCrossing = []
 i = 1
@@ -77,20 +82,17 @@ while i < len(df):
     i += 1
 
 
-
 # for every other zero corssing we would assign a period number
 period = []
 for i in range(1, len(zeroCrossing)):
     period.append((zeroCrossing[i]))
 
 
-
-
 # for each period we would assign a period number to each section of the dataframe
 df["period"] = np.zeros(len(df))
 df["period"][df["time"] < period[0]] = 1
 for i in range(1, len(period)):
-    df["period"][df["time"] >= period[i]] = i+1
+    df["period"][df["time"] >= period[i]] = i + 1
 
 print(df)
 
@@ -106,9 +108,13 @@ print(min)
 
 # plot total time of the period vs the angle
 for i in max.keys():
-    plt.plot(max[i], len(df["time"][df["period"] == i])/120, 'ro')
+    plt.plot(max[i], len(df["time"][df["period"] == i]) / 120, "ro")
+for i in min.keys():
+    plt.plot(min[i], len(df["time"][df["period"] == i]) / 120, "ro")
 # plot the angle vs the period
 # scale the graph, y axis from 0 to 2
+plt.xlabel("Angle (degrees)")
+plt.ylabel("Period (s)")
 plt.ylim(0, 2)
 plt.show()
 
@@ -119,7 +125,3 @@ data["y"] = (data["y"] - origin[0]) * ratio
 data["x"] = (data["x"] - origin[1]) * ratio
 
  """
-
-
-
-
