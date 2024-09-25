@@ -10,9 +10,10 @@ from numpy import ndarray
 
 # Initialize video capture
 file = "videos/Pendulum 3.mp4"
+
 print("file exists?", os.path.exists(file))
 cap = cv2.VideoCapture(file)
-fps = 120
+fps = 240
 # The first frame have the user to draw a line and specify the distance and the centre of the pendulum, resize before operation
 ret, frame = cap.read()
 aspect = frame.shape[1] / frame.shape[0]
