@@ -9,32 +9,20 @@ from numpy import ndarray
 
 
 # Initialize video capture
-file = 'videos/run1.mp4'
+file = 'videos/AndyRun1.mp4'
 print("file exists?", os.path.exists(file))
 cap = cv2.VideoCapture(file)
-fps = 240
+fps = 120
 # The first frame have the user to draw a line and specify the distance and the centre of the pendulum, resize before operation
 ret, frame = cap.read()
 aspect = frame.shape[1] / frame.shape[0]
 frame = cv2.resize(frame, (800, int(800 / aspect)))
-""" 
-# Draw a line
-line = None
-def draw_line(event, x, y, flags, param):
-    nonlocal line
-    if event == cv2.EVENT_LBUTTONDOWN:
-        if line is None:
-            line = [(x, y)]
-        else:
-            line.append((x, y))
-            cv2.line(frame, line[0], line[1], (0, 255, 0), 2)
-            cv2.imshow('Pendulum Tracking', frame)
 
-"""
+
 
 # color detection for the bob
 color = "ff0000"
-threshold = 0.6
+threshold = 0.85
 color = np.array([int(color[i:i + 2], 16) for i in (0, 2, 4)])
 
 color = tuple(color - 128 for color in color[::-1])
@@ -111,7 +99,7 @@ while cap.isOpened():
 df = df[df.time != 0]
 
 # save the df as a csv file
-df.to_csv('pendulum.csv', index=False)
+df.to_csv('andyRun.csv', index=False)
 # save t
 # plot  the dataframe, time and x,scatter plot, smaller dots
 plt.scatter(df.time, df.y, label='y', s=1)

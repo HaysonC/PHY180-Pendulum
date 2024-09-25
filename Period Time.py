@@ -1,50 +1,66 @@
 import math
 from cProfile import label
-from xxlimited_35 import error
-
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 
 from data_analysis import *
-# for each section record the max and min values of the angle
-max = dict()
-min = dict()
-for i in range(1, len(periods)):
-    max[i] = df["theta"][df["period"] == i].max()
 
-print(max)
-
-# plot total time of the period vs the angle, ignore the first two period and the last two period
-# collect data for Period_Timex
-for i in range(1, len(anti_periods)):
-    min[i] = df["theta"][df["anti period"] == i].min()
-
-
-print(min)
-
+df1, period1, anti_period1 = data_analysis("run1.csv")
+df2, period2, anti_period2 = data_analysis("run2.csv")
+df3, period3, anti_period3 = data_analysis("run3.csv")
 period_time_data = []
-for i in max.keys():
-    if i == 1 or i == len(max) or i == 2 or i == len(max) - 1:
-        continue
-    period_time_data.append({"Angle": max[i], "Period Time": periods[i]})
+for df, periods, anti_periods in [(df1, period1, anti_period1), (df2, period2, anti_period2), (df3, period3, anti_period3)]:
 
-for i in min.keys():
-    if i == 1 or i == len(min) or i == 2 or i == len(min) - 1:
-        continue
-    period_time_data.append({"Angle": min[i], "Period Time": anti_periods[i]})
+    # for each section record the max and min values of the angle
+    max = dict()
+    min = dict()
+    for i in range(1, len(periods)):
+        max[i] = df["theta"][df["period"] == i].max()
+
+
+    # plot total time of the period vs the angle, ignore the first two period and the last two period
+    # collect data for Period_Timex
+    for i in range(1, len(anti_periods)):
+        min[i] = df["theta"][df["anti period"] == i].min()
+
+    for i in max.keys():
+        if i == 1 or i == len(max) or i == 2 or i == len(max) - 1:
+            continue
+        period_time_data.append({"Angle": max[i], "Period Time": periods[i]})
+
+    for i in min.keys():
+        if i == 1 or i == len(min) or i == 2 or i == len(min) - 1:
+            continue
+        period_time_data.append({"Angle": min[i], "Period Time": anti_periods[i]})
+
+
 
 # sort it by angle
 period_time_data = sorted(period_time_data, key=lambda x: x["Angle"])
 # create DataFrame from collected data
 Period_Time = pd.DataFrame(period_time_data)
+# bin the data by angle of 5 degrees
+Period_Time["Angle"] = Period_Time["Angle"].apply(lambda x: int(x / 5) * 5)
+
+# xerr a/4
+xerr = 5 / 4
+# yerr is the standard deviation of the period time
+n = Period_Time.groupby("Angle").count().reset_index()["Period Time"]
+yerr = Period_Time.groupby("Angle").std().reset_index()["Period Time"]/np.sqrt(n)
+Period_Time = Period_Time.groupby("Angle").mean().reset_index()
+# kill data with  -20 < angle < 20
+for i in range(len(Period_Time)):
+    if Period_Time["Angle"][i] < -20 or Period_Time["Angle"][i] > 20:
+        Period_Time.drop(i, inplace=True)
+
+print(Period_Time)
+
 
 model = np.poly1d(np.polyfit(Period_Time['Angle'], Period_Time['Period Time'], 2))
 a = model[2]
 b = model[1]
 c = model[0]
-print("error:", error)
-
 def quadratic(t, a=a, b=b, c=c):
     return a * t ** 2 + b * t + c
 
@@ -79,7 +95,7 @@ plt.show()
 fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={'height_ratios': [2.4, 1]})
 ax1.plot(Period_Time["Angle"], quadratic(Period_Time["Angle"]), label="Regression Line")
 ax1.scatter(Period_Time["Angle"], Period_Time["Period Time"], label="Data Points", s=5, color="red")
-ax1.errorbar(Period_Time["Angle"], Period_Time["Period Time"], yerr=error, fmt="none", label="Error Bar", capsize=3, capthick=1, color="red")
+ax1.errorbar(Period_Time["Angle"], Period_Time["Period Time"], yerr=yerr,xerr=xerr, fmt="none", label="Error Bar", capsize=3, capthick=1, color="red")
 
 ax1.set_xlabel("Angle (deg)")
 ax1.set_ylabel("Period Time (s)")
@@ -103,7 +119,7 @@ ax2.text(largest, 2 * sigma, r'$+2\sigma$', ha='right', color='grey')
 ax2.text(largest, -2 * sigma, r'$-2\sigma$', ha='right', color='grey')
 # make more dense y axis lelves
 ax2.yaxis.set_major_locator(plt.MaxNLocator(5))
-ax2.errorbar(Period_Time["Angle"], Period_Time["Period Time"] - quadratic(Period_Time["Angle"]), yerr=error, fmt="none", label="Error Bar", capsize=3, capthick=1, color="black")
+ax2.errorbar(Period_Time["Angle"], Period_Time["Period Time"] - quadratic(Period_Time["Angle"]), yerr=error,xerr=xerr, fmt="none", label="Error Bar", capsize=3, capthick=1, color="black")
 ax2.set_xlabel("Angle (deg)")
 ax2.set_ylabel("Residual (s)")
 
