@@ -8,7 +8,6 @@ def data_analysis(file):
     # Read the data from the CSV file
     df = pd.read_csv(file)
     # Print the first few rows of the data
-    print(df[:5])
 
     start_from = "left"
 
@@ -74,5 +73,5 @@ def data_analysis(file):
 
 
 if __name__ == "__main__":
-    data_analysis("andyRun.csv")
+    data_analysis("andyRun2.csv")
 
