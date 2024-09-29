@@ -13,29 +13,16 @@ file = "videos/Pendulum 3.mp4"
 
 print("file exists?", os.path.exists(file))
 cap = cv2.VideoCapture(file)
-fps = 240
+fps = 120
 # The first frame have the user to draw a line and specify the distance and the centre of the pendulum, resize before operation
 ret, frame = cap.read()
 aspect = frame.shape[1] / frame.shape[0]
 frame = cv2.resize(frame, (800, int(800 / aspect)))
-""" 
-# Draw a line
-line = None
-def draw_line(event, x, y, flags, param):
-    nonlocal line
-    if event == cv2.EVENT_LBUTTONDOWN:
-        if line is None:
-            line = [(x, y)]
-        else:
-            line.append((x, y))
-            cv2.line(frame, line[0], line[1], (0, 255, 0), 2)
-            cv2.imshow('Pendulum Tracking', frame)
 
-"""
 
 # color detection for the bob
 color = "ff0000"
-threshold = 0.9
+threshold = 0.73
 color = np.array([int(color[i : i + 2], 16) for i in (0, 2, 4)])
 
 color = tuple(color - 128 for color in color[::-1])
@@ -102,7 +89,7 @@ while cap.isOpened():
         theta = np.arctan2(y - frame.shape[0] // 2, x - frame.shape[1] // 2)
         df = df._append({"time": 0, "x": x, "y": y, "theta": theta}, ignore_index=True)
 
-    if total_area > 0:
+    if total_area > 10:
         avg_center_x = weighted_sum_x / total_area
         avg_center_y = weighted_sum_y / total_area
         cv2.circle(frame, (int(avg_center_x), int(avg_center_y)), 5, (255, 0, 0), -1)
