@@ -17,7 +17,7 @@ def data_analysis(file):
     # The length of the pendulum is the distance between the origin and the bob. We need to convert pixel to real length
     origin = (min(df["y"]) if start_from == "left" else max(df["y"]), df["x"].mean())
 
-    df["theta"] = np.arctan((df["x"] - origin[1]) / (df["y"] - origin[0])) * 180 / np.pi
+    df["theta"] = np.arctan((df["x"] - origin[1]) / (df["y"] - origin[0]))
 
     lengthString = 0.137
 

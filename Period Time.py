@@ -48,7 +48,7 @@ print(f"Total period data: {len(period_time_data)}")
 # Create DataFrame from collected data
 Period_Time = pd.DataFrame(period_time_data)
 # Convert to radians
-Period_Time["Angle"] = Period_Time["Angle"] * math.pi / 180
+Period_Time["Angle"] = Period_Time["Angle"]
 
 # Bin the data by angle in radians
 min_value = Period_Time["Angle"].min()
