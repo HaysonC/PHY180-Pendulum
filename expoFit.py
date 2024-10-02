@@ -73,7 +73,7 @@ for n in range(len(data)):
     method 1:
         Q = 2pi * tau/T
     """
-    Q = 2*np.pi * tau/T
+    Q = np.pi * tau/T
     Q1.append(Q)
     print(f"Q-factor (method 1) for run {n + 1}: {Q}")
 
@@ -81,7 +81,7 @@ for n in range(len(data)):
     method 2:
         Q = |{period|theta > e^{-\pi}}|
     """
-    Q = (data[n][0]['period'][data[n][0]['theta'] > np.exp(-np.pi/4)].max()+1) *4
+    Q = (data[n][0]['period'][data[n][0]['theta'] > data[n][0]['theta'].max()*np.exp(-np.pi/4)].max()+1) *4
     print(f"Q-factor (method 2) for run {n + 1}: {Q}")
     Q2.append(Q)
 
