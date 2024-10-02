@@ -1,30 +1,37 @@
 import os
-from typing import Tuple, Any
+from typing import Tuple
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
-from numpy import ndarray, floating, dtype
 import pandas as pd
 import numpy as np
 
-
 gs_font = plt.matplotlib.font_manager.FontProperties(fname='/System/Library/Fonts/Supplemental/GillSans.ttc')
 
-from dataAnalysis import data_analysis
 
-def period_Time(data: str | list, bin_size:int=0.1, lenghtString=1) -> tuple[
-    Any, Any, Any, Any, Any, ndarray[Any, dtype[floating[Any]]], Any, float]:
+
+def period_Time(data: str | list, bin_size:int=0.1, lengthString=1) -> Tuple[pd.DataFrame, float, float, float, float, float]:
     """
     Analyze the data from the directory and plot the period vs time graph
 
     :param data: the directory containing the data files, or a list of dataframes, periods, and anti_periods
     :param bin_size: the bin size for the angle
-    :return: None
+    :param lengthString: the length of the string
+    :return: a tuple containing the data frame containing the period vs time data, the fit parameters, the sigma
+    
 
     example usage:
     Period_Time("runs")
     """
+    Period_Time: pd.DataFrame
+    a: float
+    b: float
+    c: float
+    sigma: float
+    xErr: float
+    
     if isinstance(data, str):
-        data = [data_analysis(f"{data}/{file}", lenghtString) for file in os.listdir(data) if file.endswith(".csv")]
+        from dataAnalysis import data_analysis
+        data = [data_analysis(f"{data}/{file}", lengthString) for file in os.listdir(data) if file.endswith(".csv")]
     elif isinstance(data, list):
         data = data
     else:
@@ -43,27 +50,33 @@ def period_Time(data: str | list, bin_size:int=0.1, lenghtString=1) -> tuple[
     print(f"Total period data: {len(period_time_data)}")
     Period_Time = pd.DataFrame(period_time_data)
     Period_Time["Angle"] = Period_Time["Angle"]
+
+
+    # Convert back to float for calculations
+    Period_Time["Angle"] = Period_Time["Angle"].astype(float)
+    Period_Time["Angle"] = Period_Time["Angle"]
     min_value = Period_Time["Angle"].min()
     max_value = Period_Time["Angle"].max()
     bin_edges = np.arange(min_value, max_value + bin_size, bin_size)
     Period_Time["Angle"] = pd.cut(Period_Time["Angle"], bins=bin_edges)
-    Period_Time["Angle"] = Period_Time["Angle"].apply(
-        lambda x: x.mid if pd.notnull(x) else np.nan
-    )
+    # for each angle series, just xErr would be the bin size/2, and yErr would be the standard deviation of the period time.
+    # At the end but them into a one to one df with the angle being the mean of that angle series and
+    # The period time being the mean the entries in that angle series
+    Period_Time = Period_Time.groupby("Angle",observed=False).agg({"Period Time": ["mean", "std", "count"]}).reset_index()
+    Period_Time.columns = ["Angle", "Period Time", "Period Time std", "Count"]
+    Period_Time["Angle"] = Period_Time["Angle"].apply(lambda x: x.mid)
+    Period_Time["Period Time"] = Period_Time["Period Time"]
+    Period_Time["Period Time std"] = Period_Time["Period Time std"]
+    yErr = Period_Time["Period Time std"]/np.sqrt(Period_Time["Count"])
+    # add the yErr to the data frame
+    Period_Time["yErr"] = yErr
+    xErr = bin_size/2
+    # drop Nan
     Period_Time = Period_Time.dropna()
-
-    # Convert back to float for calculations
+    # put them in float
     Period_Time["Angle"] = Period_Time["Angle"].astype(float)
+    Period_Time["Period Time"] = Period_Time["Period Time"].astype(float)
 
-    # Group and calculate mean values
-    Period_Time = Period_Time.groupby("Angle").mean().reset_index()
-
-    # Calculate error values
-    n = Period_Time["Period Time"].count()
-    yerr = Period_Time.groupby("Angle")["Period Time"].std().reset_index()[
-               "Period Time"
-           ] / np.sqrt(n)
-    xerr = bin_size / 4
 
     # Fit a polynomial to the data
     model = np.poly1d(np.polyfit(Period_Time["Angle"], Period_Time["Period Time"], 2))
@@ -79,15 +92,29 @@ def period_Time(data: str | list, bin_size:int=0.1, lenghtString=1) -> tuple[
     )
     # Calculate r_value
     r_value = np.corrcoef(Period_Time["Period Time"], fit_curve(Period_Time["Angle"]))[0, 1]
+    # Print results
+    print("sigma:", sigma)
+    print("r^2:", r_value ** 2)
+    print("a:", a)
+    print("b:", b)
+    print("c:", c)
+    # print equation in latex, when it is negative, it will be in the form of -x instead of + - x
+    print(f"y = {a}x^2{f'-{-b}' if b < 0 else f'+{b}'}x{f'-{-c}' if c < 0 else f'+{c}'}")
+    print("Average period time:", Period_Time["Period Time"].mean())
+    print("Predicted period time at 0 rad:", 2 * np.pi * np.sqrt(lengthString / 9.81))
+    return Period_Time, a, b, c, sigma, xErr
 
-    return Period_Time, a, b, c, sigma, r_value, yerr, xerr
 
-
-def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, sigma: float, r_value: float, yerr: float, xerr: float) -> None:
+def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, sigma: float, xErr:float) -> None:
     """
     Plot the period vs time graph
 
     :param Period_Time: the data frame containing the period vs time data
+    :param a: the x^2 coefficient of the fit
+    :param b: the x coefficient of the fit
+    :param c: the constant of the fit
+    :param sigma: the standard deviation of the residuals
+    :param xErr: the x error
     :return: None
 
     example usage:
@@ -110,8 +137,8 @@ def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, si
     ax1.errorbar(
         Period_Time["Angle"],
         Period_Time["Period Time"],
-        yerr=yerr,
-        xerr=xerr,
+        yerr=Period_Time["yErr"],
+        xerr=xErr,
         fmt="none",
         label="Error Bar",
         capsize=3,
@@ -123,12 +150,15 @@ def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, si
     ax1.set_ylabel("Period Time (s)")
     ax1.legend()
     ax1.set_title("Period Time vs Angle")
-    ax1.set_ylim(bottom=1.40, top=1.60)
+
+    # Set the y-axis limits such that the max is on top with a little bit of room to spare, same with bottom
+    yRangeSize = Period_Time["Period Time"].max() - Period_Time["Period Time"].min()
+    yRangeSize *= 0.3
+    ax1.set_ylim(Period_Time["Period Time"].min()-yRangeSize-min(Period_Time['yErr']), Period_Time["Period Time"].max()+yRangeSize+max(Period_Time['yErr']))
     plt.subplots_adjust(hspace=0.5)
 
     # Calculate ±2 standard deviation values for residuals
-    upper_sigma = 2 * sigma
-    lower_sigma = -2 * sigma
+
 
     # Plot residuals
     ax2.scatter(
@@ -164,8 +194,8 @@ def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, si
     ax2.errorbar(
         Period_Time["Angle"],
         Period_Time["Period Time"] - fit_curve(Period_Time["Angle"]),
-        yerr=yerr,
-        xerr=xerr,
+        yerr=Period_Time["yErr"],
+        xerr=xErr,
         fmt="none",
         color="red",
         capsize=3,
@@ -179,9 +209,3 @@ def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, si
     plt.savefig("graph1.png", dpi=300)
     plt.show()
 
-    # Print results
-    print("sigma:", sigma)
-    print("r^2:", r_value ** 2)
-    print("a:", a)
-    print("b:", b)
-    print("c:", c)

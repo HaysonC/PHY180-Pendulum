@@ -8,12 +8,9 @@ from vision import video_capture
 def main():
     pass
     dir = "runs"
-    data = [data_analysis(f"{dir}/{file}", 0.155, update=True) for file in os.listdir(dir) if file.endswith(".csv")]
-    expo = exponential_fit(data)
-    plot_expo(data, *expo)
-    # Plot the exponential fit data
+    data = [data_analysis(f"{dir}/{file}", 0.155) for file in os.listdir(dir) if file.endswith(".csv")]
 
-    pt = period_Time(data)
+    pt = period_Time(data, lengthString=0.155)
     plot_period_time(*pt)
     # Plot the period time data
 
