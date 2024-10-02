@@ -13,10 +13,8 @@ gs_font = fm.FontProperties(fname='/System/Library/Fonts/Supplemental/GillSans.t
 def exponential_fit(data):
     """
     Fit an exponential function to the data and return the fit parameters, tau, and T.
-
-    :param: data: tuple containing the data frame, the periods, and the anti-periods, comes from data_analysis
-
-    :returntuple: A tuple containing the fit parameters, tau, and T.
+    :param data: tuple containing the data frame, the periods, and the anti-periods, comes from data_analysis
+    :return: The fit parameters: theta_not, tau, phi, T
     """
     fit = lambda t, theta_not, tau, phi, T: theta_not * np.exp(-t / tau) * np.cos(2 * np.pi * t / T + phi)
     params = []
@@ -28,12 +26,10 @@ def exponential_fit(data):
         a.extend(curve_fit(lambda t, tau, phi, T: fit(t, theta_not, tau, phi, T), x, y)[0])
         params.append(a)
     params = np.array(params)
-    tau = np.mean(params[:, 1])
-    T = np.mean(params[:, 3])
-    return params, tau, T
+    return params
 
 
-def plot_expo(data, params, tau, T):
+def plot_expo(data, params)-> None:
     """
     Plot the data and the fit for each run and calculate the Q-factor using two different methods.
     :param data: dataframes of time and theta values, comes from data_analysis
@@ -92,3 +88,5 @@ def plot_expo(data, params, tau, T):
     Q2 = np.array(Q2)
     print(f"Q-factor (method 1): {Q1.mean()} +/- {np.std(Q1) / np.sqrt(len(Q1))}")
     print(f"Q-factor (method 2): {Q2.mean()} +/- {np.std(Q2) / np.sqrt(len(Q2))}")
+
+    return None
