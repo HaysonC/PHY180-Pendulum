@@ -11,26 +11,26 @@ gs_font = plt.matplotlib.font_manager.FontProperties(fname='/System/Library/Font
 
 from dataAnalysis import data_analysis
 
-def Period_Time(dir:str, bin_size:int=0.1) -> tuple[
+def period_Time(data: str | list, bin_size:int=0.1, lenghtString=1) -> tuple[
     Any, Any, Any, Any, Any, ndarray[Any, dtype[floating[Any]]], Any, float]:
     """
     Analyze the data from the directory and plot the period vs time graph
 
-    :param dir: the directory containing the data files
+    :param data: the directory containing the data files, or a list of dataframes, periods, and anti_periods
     :param bin_size: the bin size for the angle
     :return: None
 
     example usage:
     Period_Time("runs")
     """
-    data = [data_analysis(f"{dir}/{file}") for file in os.listdir(dir) if file.endswith(".csv")]
+    if isinstance(data, str):
+        data = [data_analysis(f"{data}/{file}", lenghtString) for file in os.listdir(data) if file.endswith(".csv")]
+    elif isinstance(data, list):
+        data = data
+    else:
+        raise ValueError("The data should be a string or a list")
+
     period_time_data = []
-    totalData = 0
-    for file in os.listdir(dir):
-        if file.endswith(".csv"):
-            df = pd.read_csv(f"{dir}/{file}")
-            totalData += len(df)
-    print(f"Total data: {totalData}")
     for df, periods, anti_periods in data:
         max_angles = {i: df["theta"][df["period"] == i].max() for i in range(1, len(periods))}
         min_angles = {i: df["theta"][df["anti period"] == i].min() for i in range(1, len(anti_periods))}

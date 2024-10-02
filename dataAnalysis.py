@@ -3,7 +3,7 @@ import pandas as pd
 from scipy.signal import find_peaks, savgol_filter
 
 
-def data_analysis(file):
+def data_analysis(file, lengthString, update=False):
     """
     Analyze the data from the file. It returns the data frame, the periods, and the anti-periods
 
@@ -21,13 +21,18 @@ def data_analysis(file):
     Analyze the data from the file
 
     :param file: the file to analyze, the file should be a csv file containing the data
+    :param lengthString: the length of the string
+    :param update: whether to update the file
+
+
     :return: A tuple containing the data frame, the periods, and the anti-periods (the distance between the peaks and the troughs respectively)
     """
     df = pd.read_csv(file)
-    start_from = "left"
-    origin = (min(df["y"]) if start_from == "left" else max(df["y"]), df["x"].mean())
+    origin = (min(df["y"]), df["x"].mean())
+
+
+
     df["theta"] = np.arctan((df["x"] - origin[1]) / (df["y"] - origin[0]))
-    lengthString = 0.137
     ratio = lengthString / (max(df["y"]) - min(df["y"]))
     df["x"] = (df["x"] - origin[1]) * ratio
     df["y"] = (df["y"] - origin[0]) * ratio
@@ -51,5 +56,10 @@ def data_analysis(file):
     for i, t in enumerate(antipeak_times[1:]):
         index = df[df["time"] < t].index[-1]
         df.loc[index:, "anti period"] = i + 1
+
+    if update:
+        df.to_csv(file, index=False)
+
+
     return df, periods, anti_periods
 
