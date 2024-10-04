@@ -72,6 +72,7 @@ There are a few parameters you might need to adjust in the pendulum_tracker.py f
 ## Contributors
 - [Hayson Cheung](https://github.com/HaysonC)
 - [Eric Xie](https://github.com/Epic-Eric)
+- [Andy Wen](https://github.com/AndyWen06)
 
 ## Acknowledgements
 This projects was developed under the course of Phy180 in the University of Toronto. Under the Division of Engineering Science, Faculty of Applied Science and Engineering.
