@@ -3,7 +3,16 @@
 This project analyzes pendulum motion data from CSV files, fits an exponential function to the data, and plots the results. It also captures video data for further analysis.
 
 **PLEASE CREDIT ME AND ERIC IN YOUR REPORTS THANKS :)** 
-
+```
+@misc{HaysonC_PHY180_Pendulum,
+  author = {Cheung, H.S. and Wen, Y. and Xie, E.},
+  title = {PHY180-Pendulum},
+  year = {2024},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  note = {Avaliable Online at: \url{https://github.com/HaysonC/PHY180-Pendulum}},
+}
+```
 ## Project Structure
 
 - `main.py`: Main script to run the data analysis and plotting.
