@@ -9,7 +9,7 @@ gs_font = plt.matplotlib.font_manager.FontProperties(fname='/System/Library/Font
 
 
 
-def period_Time(data: str | list, bin_size:int=0.1, lengthString=1) -> Tuple[pd.DataFrame, float, float, float, float, float]:
+def period_Time(data: str | list, bin_size:float=0.01256, lengthString=1, fps=120) -> Tuple[pd.DataFrame, np.polyfit, float, float]:
     """
     Analyze the data from the directory and plot the period vs time graph
 
@@ -57,12 +57,16 @@ def period_Time(data: str | list, bin_size:int=0.1, lengthString=1) -> Tuple[pd.
     Period_Time["Angle"] = Period_Time["Angle"]
     min_value = Period_Time["Angle"].min()
     max_value = Period_Time["Angle"].max()
+    max_error = Period_Time["Angle"].std()/np.sqrt(len(Period_Time))
+    min_error = Period_Time["Angle"].std()/np.sqrt(len(Period_Time))
+
     bin_edges = np.arange(min_value, max_value + bin_size, bin_size)
     Period_Time["Angle"] = pd.cut(Period_Time["Angle"], bins=bin_edges)
     # for each angle series, just xErr would be the bin size/2, and yErr would be the standard deviation of the period time.
     # At the end but them into a one to one df with the angle being the mean of that angle series and
     # The period time being the mean the entries in that angle series
     Period_Time = Period_Time.groupby("Angle",observed=False).agg({"Period Time": ["mean", "std", "count"]}).reset_index()
+
     Period_Time.columns = ["Angle", "Period Time", "Period Time std", "Count"]
     Period_Time["Angle"] = Period_Time["Angle"].apply(lambda x: x.mid)
     Period_Time["Period Time"] = Period_Time["Period Time"]
@@ -73,17 +77,19 @@ def period_Time(data: str | list, bin_size:int=0.1, lengthString=1) -> Tuple[pd.
     xErr = bin_size/2
     # drop Nan
     Period_Time = Period_Time.dropna()
+    # if the yerr is less then 1/fps*2, then it is 1/fps*2
+    Period_Time["yErr"] = Period_Time["yErr"].apply(lambda x: 1/(fps*2) if x < 1/(fps*2) else x)
     # put them in float
     Period_Time["Angle"] = Period_Time["Angle"].astype(float)
     Period_Time["Period Time"] = Period_Time["Period Time"].astype(float)
 
 
     # Fit a polynomial to the data
-    model = np.poly1d(np.polyfit(Period_Time["Angle"], Period_Time["Period Time"], 2))
-    a, b, c = model[2], model[1], model[0]
+    model, cov = np.polyfit(Period_Time["Angle"], Period_Time["Period Time"], 2, cov=True)
 
+    model = np.poly1d(model)
     def fit_curve(t):
-        return a * t ** 2 + b * t + c
+        return model(t)
 
     # Calculate sigma
     sigma = np.sqrt(
@@ -93,19 +99,36 @@ def period_Time(data: str | list, bin_size:int=0.1, lengthString=1) -> Tuple[pd.
     # Calculate r_value
     r_value = np.corrcoef(Period_Time["Period Time"], fit_curve(Period_Time["Angle"]))[0, 1]
     # Print results
+    t0 = (max_value - min_value)/2
+    print("theta_0:", (max_value - min_value)/2, " +/- ", max(max_error, min_error))
     print("sigma:", sigma)
     print("r^2:", r_value ** 2)
+    """ 
     print("a:", a)
     print("b:", b)
     print("c:", c)
     # print equation in latex, when it is negative, it will be in the form of -x instead of + - x
-    print(f"y = {a}x^2{f'-{-b}' if b < 0 else f'+{b}'}x{f'-{-c}' if c < 0 else f'+{c}'}")
+    print(fr"y = \theta_0({a/t0}x^2{f'-{-b/t0}' if b < 0 else f'+{b/t0}'}x{f'-{-c/t0}' if c < 0 else f'+{c/t0})'}")
     print("Average period time:", Period_Time["Period Time"].mean())
     print("Predicted period time at 0 rad:", 2 * np.pi * np.sqrt(lengthString / 9.81))
-    return Period_Time, a, b, c, sigma, xErr
+     """
+    T0 = Period_Time["Period Time"].min()
+    for j,i in enumerate(list(model)[::-1]):
+        print(fr"x^{j}: {i}")
+
+    print("Divide T_0")
+    print("T_0:", T0)
+    for j,i in enumerate(list(model)[::-1]):
+        print(fr"x^{j}: {i/T0}")
+
+    errors = np.sqrt(np.diag(cov))
+
+    print(errors)
+
+    return Period_Time, model, sigma, xErr
 
 
-def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, sigma: float, xErr:float) -> None:
+def plot_period_time(Period_Time: pd.DataFrame, model:np.polyfit, sigma: float, xErr:float, fps=30, lengthString=0.155) -> None:
     """
     Plot the period vs time graph
 
@@ -123,14 +146,14 @@ def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, si
     """
 
     def fit_curve(t):
-        return a * t ** 2 + b * t + c
+        return model(t)
     # Create plots
     fig, (ax1, ax2) = plt.subplots(2, 1, gridspec_kw={"height_ratios": [2.4, 1]})
-    ax1.plot(Period_Time["Angle"], fit_curve(Period_Time["Angle"]), label="Regression Line")
+    ax1.plot(Period_Time["Angle"], fit_curve(Period_Time["Angle"]), label="Quadratic Fit")
     ax1.scatter(
         Period_Time["Angle"],
         Period_Time["Period Time"],
-        label="Data Points",
+        label="Measured Period",
         s=5,
         color="red",
     )
@@ -146,17 +169,26 @@ def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, si
         color="red",
     )
 
-    ax1.set_xlabel("Angle (rad)")
-    ax1.set_ylabel("Period Time (s)")
-    ax1.legend()
-    ax1.set_title("Period Time vs Angle")
+    ax1.set_xlabel("Angle (rad)", fontproperties=gs_font)
+    ax1.set_ylabel("Period Time (s)", fontproperties=gs_font)
+
+    ax1.set_title("Period Time vs Angle", fontproperties=gs_font)
 
     # Set the y-axis limits such that the max is on top with a little bit of room to spare, same with bottom
     yRangeSize = Period_Time["Period Time"].max() - Period_Time["Period Time"].min()
     yRangeSize *= 0.3
     ax1.set_ylim(Period_Time["Period Time"].min()-yRangeSize-min(Period_Time['yErr']), Period_Time["Period Time"].max()+yRangeSize+max(Period_Time['yErr']))
     plt.subplots_adjust(hspace=0.5)
-
+    # draw the small angle approximation
+    ax1.axhline(y=2 * np.pi * np.sqrt(lengthString / 9.81), color="green", linestyle="--", label="Small Angle Approximation \n(dotted: error)")
+    print(f"Small Angle Approximation: {2 * np.pi * np.sqrt(lengthString / 9.81)}")
+    err = (0.0005/lengthString) * 2 * np.pi * np.sqrt(lengthString / 9.81)
+    print(f"Error: {err}")
+    ax1.axhline(y=2 * np.pi * np.sqrt(lengthString / 9.81) + err, color="lime", linestyle="dotted")
+    ax1.axhline(y=2 * np.pi * np.sqrt(lengthString / 9.81) - err, color="lime", linestyle="dotted")
+    print(Period_Time)
+    # on the legend have the marker be larger to be visible
+    ax1.legend(markerscale=2)
     # Calculate ±2 standard deviation values for residuals
 
 
@@ -194,7 +226,6 @@ def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, si
     ax2.errorbar(
         Period_Time["Angle"],
         Period_Time["Period Time"] - fit_curve(Period_Time["Angle"]),
-        yerr=Period_Time["yErr"],
         xerr=xErr,
         fmt="none",
         color="red",
@@ -203,9 +234,9 @@ def plot_period_time(Period_Time: pd.DataFrame, a: float, b: float, c: float, si
     )
 
     # Set labels
-    ax2.set_xlabel("Angle (rad)")
-    ax2.set_ylabel("Residual (s)")
-
+    ax2.set_xlabel("Angle (rad)", fontproperties=gs_font)
+    ax2.set_ylabel("Residual (s)", fontproperties=gs_font)
+    plt.subplots_adjust()
     plt.savefig("graph1.png", dpi=300)
     plt.show()
 

@@ -1,9 +1,47 @@
+import random
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks, savgol_filter
 
+import numpy as np
+from scipy.optimize import least_squares
 
-def data_analysis(file, lengthString, update=False):
+
+def find_pendulum_center(points, radius):
+    """
+    Finds the center of a pendulum's swing assuming symmetric motion and known radius.
+
+    Parameters:
+    points : list of tuples
+        A list of (x, y) coordinates of tracked points on the pendulum's path.
+    radius : float
+        Known radius of the pendulum swing.
+
+    Returns:
+    tuple
+        (cx, cy) coordinates of the pendulum swing center.
+    """
+    # Convert to numpy array for easy manipulation
+    points = np.array(points)
+
+    # Find the leftmost and rightmost points
+    min_x_point = points[np.argmin(points[:, 0])]
+    max_x_point = points[np.argmax(points[:, 0])]
+
+    # Midpoint between the leftmost and rightmost points
+    midpoint_x = (max_x_point[0]+min_x_point[0] ) / 2
+    midpoint_y = (max_x_point[1]+min_x_point[1] ) / 2
+
+    # Center of the swing is radius distance directly above the midpoint
+    center_y = midpoint_y + np.sqrt(radius ** 2 - (max_x_point[0] - midpoint_x)**2)
+
+    return (midpoint_x, center_y)
+
+
+
+def data_analysis(file, lengthString, update=False, returnPeaks=False):
     """
     Analyze the data from the file. It returns the data frame, the periods, and the anti-periods
 
@@ -28,20 +66,28 @@ def data_analysis(file, lengthString, update=False):
     :return: A tuple containing the data frame, the periods, and the anti-periods (the distance between the peaks and the troughs respectively)
     """
     df = pd.read_csv(file)
-    origin = (min(df["y"]), df["x"].mean())
+    points = []
+    for i in df.values:
+        points.append([i[2], i[3]])
+    origin = find_pendulum_center(points, lengthString)
+    print(origin)
+    df["theta"] = np.arctan((df["x"] - origin[0]) / (df["y"] - origin[1]))
+    ratio = lengthString / (origin[1] - min(df["y"]))
+    df["x"] = (df["x"] - origin[0]) * ratio
+    df["y"] = (df["y"] - origin[1]) * ratio
 
 
-
-    df["theta"] = np.arctan((df["x"] - origin[1]) / (df["y"] - origin[0]))
-    ratio = lengthString / (max(df["y"]) - min(df["y"]))
-    df["x"] = (df["x"] - origin[1]) * ratio
-    df["y"] = (df["y"] - origin[0]) * ratio
-    origin = (0, 0)
     theta_smooth = savgol_filter(df["theta"], window_length=51, polyorder=3)
     peaks, _ = find_peaks(theta_smooth)
     antipeaks, _ = find_peaks(-theta_smooth)
     peak_times = df["time"][peaks]
     antipeak_times = df["time"][antipeaks]
+
+    peak_values = df["theta"].iloc[peaks]
+    antipeak_values = df["theta"].iloc[antipeaks]
+
+    # plot
+
     periods = list(np.diff(peak_times))
     period = np.mean(periods)
     periods = [p for p in periods if abs(p - period) < period * 0.3]
@@ -59,7 +105,10 @@ def data_analysis(file, lengthString, update=False):
 
     if update:
         df.to_csv(file, index=False)
-
-
-    return df, periods, anti_periods
-
+    # plot theta vs time
+    plt.plot(df["time"], df["theta"])
+    plt.show()
+    if returnPeaks:
+        return df, periods, anti_periods, peak_times, antipeak_times, peak_values, antipeak_values
+    else:
+        return df, periods, anti_periods

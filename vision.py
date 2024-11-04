@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def video_capture(file: str, threshold: float, fps: int = 120, color: str = "ff0000",
+def video_capture(file: str, threshold: float, fps: int = 60, color: str = "ff0000",
                   plotResults: bool = False) -> pd.DataFrame:
     """
     Capture the video from the file
@@ -35,8 +35,13 @@ def video_capture(file: str, threshold: float, fps: int = 120, color: str = "ff0
         ret, frame = cap.read()
         if not ret:
             break
-        frame = cv2.resize(frame, (800, int(800 / aspect)))
-        s = frame - np.array([128, 128, 128])
+        frame = cv2.resize(frame, (400, int(400 / aspect)))
+        s = frame.copy()
+        s[:, :, 2] = s[:, :, 2] * 1.6
+        s[:, :, 1] = s[:, :, 1] * 0.8
+        s[:, :, 0] = s[:, :, 0] * 1.8
+        s = s - np.array([128, 128, 128])
+        # adjust white balance to cool down the color
 
         norm_s = np.linalg.norm(s, axis=2)
         dot = np.sum(s * color, axis=2) / (norm_s * norm_color)
@@ -46,9 +51,6 @@ def video_capture(file: str, threshold: float, fps: int = 120, color: str = "ff0
         # costheta > threshold
         mask = np.zeros_like(dot, dtype=np.uint8)
         mask[dot > threshold] = 255
-
-        x = []
-        y = []
 
         # Find contours
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
